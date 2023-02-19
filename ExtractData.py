@@ -1,4 +1,3 @@
-
 import xml.etree.ElementTree as ET
 
 # Function to get the data from XML Annotation
