@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 2
+names: ['donation', 'streamer']
+
+roboflow:
+  workspace: dyffh-aar64
+  project: eowptlws
+  version: 9
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/dyffh-aar64/eowptlws/dataset/9
