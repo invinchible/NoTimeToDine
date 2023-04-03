@@ -14,6 +14,7 @@ from utils.general import check_img_size, check_requirements, check_imshow, non_
 from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 
+random.seed(1) # Stop using random color on every run
 
 def detect(save_img=False):
     source, weights, view_img, save_txt, imgsz, trace = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace
@@ -29,6 +30,9 @@ def detect(save_img=False):
     set_logging()
     device = select_device(opt.device)
     half = device.type != 'cpu'  # half precision only supported on CUDA
+
+    #Initialize an output file BoundingBoxes.txt
+    writeOutput = open("BoundingBoxes.txt", "w")
 
     # Load model
     model = attempt_load(weights, map_location=device)  # load FP32 model
@@ -67,6 +71,7 @@ def detect(save_img=False):
     old_img_b = 1
 
     t0 = time.time()
+    startTime = 0
     for path, img, im0s, vid_cap in dataset:
         img = torch.from_numpy(img).to(device)
         img = img.half() if half else img.float()  # uint8 to fp16/32
@@ -127,11 +132,22 @@ def detect(save_img=False):
                     if save_img or view_img:  # Add bbox to image
                         label = f'{names[int(cls)]} {conf:.2f}'
                         plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=1)
+                
+                    # Write results to a .txt file 
+                    currentTime_object = time.time()
+                    currentTime_object = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime(currentTime_object))
+                    writeOutput.write(currentTime_object + "\t" + str(int(xyxy[0])) + "\t" + str(int(xyxy[1])) + "\t" + str(int(xyxy[2])) + "\t" + str(int(xyxy[3])) + "\n")
 
             # Print time (inference + NMS)
             print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
 
             # Stream results
+            if dataset.mode != 'image':
+                currentTime = time.time()
+                fps = 1/(currentTime - startTime)
+                startTime = currentTime
+                cv2.putText(im0, "FPS: " + str(int(fps)), (20,70), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0), 2)
+
             if view_img:
                 cv2.imshow(str(p), im0)
                 cv2.waitKey(1)  # 1 millisecond
@@ -140,7 +156,7 @@ def detect(save_img=False):
             if save_img:
                 if dataset.mode == 'image':
                     cv2.imwrite(save_path, im0)
-                    print(f" The image with the result is saved in: {save_path}")
+                    #print(f" The image with the result is saved in: {save_path}")
                 else:  # 'video' or 'stream'
                     if vid_path != save_path:  # new video
                         vid_path = save_path
@@ -156,7 +172,11 @@ def detect(save_img=False):
                         vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
                     vid_writer.write(im0)
 
+    # Close the output file YOLO is writing to
+    writeOutput.close()
+
     if save_txt or save_img:
+        print(f" The output with the result is saved in: {save_path}")
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
         #print(f"Results saved to {save_dir}{s}")
 
